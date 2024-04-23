@@ -4,11 +4,35 @@ import { useState } from "react"
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 function App() {
+  const [file, setFile] = useState(null)
   const [input, setInput] = useState("")
   const [output, setOutput] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const handleFileUpload = async () => {
+    if (!file || loading) return
+
+    setLoading(true)
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const response = await axios.post(`${BASE_URL}/fileupload`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      setOutput(response.data)
+    } catch (error) {
+      console.error("Upload error:", error)
+      setOutput("An error occurred. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSubmit = async () => {
+    if (loading) return
     setLoading(true)
     try {
       const response = await axios.post(`${BASE_URL}/feedback`, input, {
@@ -16,10 +40,9 @@ function App() {
           "Content-Type": "text/plain",
         },
       })
-      console.log(response.data)
       setOutput(response.data)
     } catch (error) {
-      console.error(error)
+      setOutput("An error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -108,6 +131,37 @@ function App() {
 
   return (
     <div>
+      <div
+        id="banner"
+        className="sticky top-0 z-50 flex justify-between items-center bg-violet-900 text-violet-50 text-sm py-2 px-4 w-full"
+      >
+        <p className="flex-grow text-center">
+          ✨ What&apos;s new? You can now upload files for feedback. Please keep
+          the size of the uploaded file no more than 1MB.
+        </p>
+        <button
+          className="ml-4"
+          onClick={() => {
+            document.getElementById("banner").style.display = "none"
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="white"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
       <h1 className="text-center font-bold text-3xl text-gray-100 my-8">
         AI Writing Assistant
       </h1>
@@ -116,13 +170,37 @@ function App() {
         <div className="w-1/2 bg-gray-800 p-4 rounded-lg h-fit">
           <textarea
             className="w-full h-80 bg-gray-700 active:border-gray-100 text-gray-100 p-4 rounded-lg resize-none"
-            placeholder="Start typing here..."
+            placeholder="Start typing here... or upload a .docx file."
             onChange={(e) => setInput(e.target.value)}
           />
           <div className="flex justify-end pt-4">
+            <form
+              encType="multipart/form-data"
+              onSubmit={(e) => {
+                e.preventDefault() // Prevent actual form submission
+                handleFileUpload()
+              }}
+              className="mr-auto"
+            >
+              <input
+                className="bg-gray-900 text-gray-500 font-semibold py-2 pl-4 rounded-l-lg"
+                type="file"
+                accept=".docx, doc"
+                onChange={(e) => setFile(e.target.files[0])}
+              />
+              <button
+                className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-gray-100 font-bold py-2 px-4 rounded-r-lg"
+                onClick={handleFileUpload}
+                type="button"
+                disabled={!file || loading}
+              >
+                Upload
+              </button>
+            </form>
+
             <button
               className="bg-gray-700 hover:bg-gray-600 active:bg-gray-500 text-gray-100 font-bold py-2 px-4 rounded-lg"
-              disabled={!input}
+              disabled={!input || loading}
               onClick={handleSubmit}
             >
               Submit
@@ -131,13 +209,13 @@ function App() {
         </div>
         <div className="w-1/2 bg-gray-800 p-8 rounded-lg ml-4 max-h-[80vh] overflow-auto">
           {/* <div className="w-full h-96 bg-gray-700 text-gray-100 p-4 rounded-lg grow-1 overflow-y-auto"> */}
-            <div className=" text-gray-300">
-              {!output && !loading
-                ? "AI generated feedback will appear here."
-                : loading
-                ? "Loading... Because it's currently running on a free server, large texts may even take up to a minute to process."
-                    : handleOutput(output)}
-            </div>
+          <div className=" text-gray-300">
+            {!output && !loading
+              ? "AI generated feedback will appear here."
+              : loading
+              ? "Loading... Because it's currently running on a free server, large texts may even take up to a minute to process."
+              : handleOutput(output)}
+          </div>
           {/* </div> */}
         </div>
       </div>
